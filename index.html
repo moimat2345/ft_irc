@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ft_irc Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    color-scheme: light;
+    --bg: #eef1f4;
+    --surface: #ffffff;
+    --surface-2: #e4e8ec;
+    --border: #cad2da;
+    --text: #1b232c;
+    --text-dim: #5b6670;
+    --accent: #0f8a72;
+    --accent-ink: #ffffff;
+    --accent-warm: #a85c0a;
+    --danger: #b7342f;
+    --danger-bg: #fbe9e8;
+    --person-a: #2f5fd6;
+    --person-a-bg: #e8eefc;
+    --person-b: #8a3fbd;
+    --person-b-bg: #f3e9fa;
+    --code-bg: #10161d;
+    --code-text: #d8e0e8;
+    --code-border: #262f3a;
+    --radius: 6px;
+    --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --sans: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      color-scheme: dark;
+      --bg: #0b0f14;
+      --surface: #121922;
+      --surface-2: #1a2330;
+      --border: #2a3542;
+      --text: #dde4ea;
+      --text-dim: #8a97a6;
+      --accent: #5ee6c0;
+      --accent-ink: #052019;
+      --accent-warm: #ffb15e;
+      --danger: #ff8080;
+      --danger-bg: #3a1a1a;
+      --person-a: #7fb0ff;
+      --person-a-bg: #152138;
+      --person-b: #d9a6ef;
+      --person-b-bg: #26163a;
+      --code-bg: #090d12;
+      --code-text: #cfe3dd;
+      --code-border: #1d2834;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1, h2, h3, h4 { font-family: var(--mono); margin: 0; text-wrap: balance; }
+  code, pre, .mono { font-family: var(--mono); }
+  a { color: var(--accent); }
+  p { margin: 0 0 12px; max-width: 68ch; }
+
+  /* ---------- window chrome ---------- */
+  .titlebar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px;
+    padding-top: calc(10px + env(safe-area-inset-top, 0px));
+    background: var(--surface-2);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 20;
+  }
+  .dots { display: flex; gap: 6px; flex-shrink: 0; }
+  .dots span { width: 10px; height: 10px; border-radius: 50%; display: block; background: var(--border); }
+  .dots span:nth-child(1) { background: #ff6159; }
+  .dots span:nth-child(2) { background: #ffbd2e; }
+  .dots span:nth-child(3) { background: #28c940; }
+  .titlebar .name { font-family: var(--mono); font-size: 13px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .titlebar .name b { color: var(--text); }
+
+  /* ---------- layout ---------- */
+  .app { display: flex; min-height: calc(100% - 45px); }
+
+  .sidebar {
+    width: 230px;
+    flex-shrink: 0;
+    border-right: 1px solid var(--border);
+    background: var(--surface);
+    padding: 16px 10px;
+    padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  }
+  .sidebar .label {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    padding: 6px 10px 8px;
+  }
+  .navbtn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    text-align: left;
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    font-family: var(--mono);
+    font-size: 13.5px;
+    padding: 8px 10px;
+    border-radius: var(--radius);
+    cursor: pointer;
+  }
+  .navbtn:hover { background: var(--surface-2); color: var(--text); }
+  .navbtn.active { background: var(--accent); color: var(--accent-ink); }
+  .navbtn .hash { opacity: 0.6; }
+
+  main {
+    flex: 1;
+    min-width: 0;
+    padding: 28px 32px 60px;
+  }
+  .topicbar {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--text-dim);
+    border-bottom: 1px dashed var(--border);
+    padding-bottom: 14px;
+    margin-bottom: 26px;
+  }
+  .topicbar b { color: var(--text); }
+
+  section.panel { display: none; max-width: 920px; }
+  section.panel.active { display: block; }
+
+  h2.pagehead {
+    font-size: 22px;
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 6px;
+  }
+  h2.pagehead .hash { color: var(--accent); }
+  .lede { color: var(--text-dim); margin-bottom: 26px; }
+
+  /* ---------- generic bits ---------- */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 10px;
+    margin: 18px 0 28px;
+  }
+  .stat {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+  }
+  .stat .n { font-family: var(--mono); font-size: 20px; font-weight: 600; color: var(--accent); }
+  .stat .d { font-size: 12.5px; color: var(--text-dim); margin-top: 2px; }
+
+  .callout {
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--accent);
+    background: var(--surface);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    margin: 14px 0;
+  }
+  .callout.danger { border-left-color: var(--danger); background: var(--danger-bg); }
+  .callout .k { font-family: var(--mono); font-size: 11.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--danger); display: block; margin-bottom: 4px; }
+  .callout.danger .k { color: var(--danger); }
+  .callout:not(.danger) .k { color: var(--accent); }
+
+  .rulelist { list-style: none; margin: 0 0 20px; padding: 0; display: grid; gap: 8px; }
+  .rulelist li {
+    display: flex; gap: 10px; align-items: flex-start;
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 10px 12px; font-size: 14px;
+  }
+  .rulelist li .tag { font-family: var(--mono); color: var(--danger); flex-shrink: 0; font-size: 12px; margin-top: 2px; }
+
+  code.inline {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1px 5px;
+    font-size: 0.9em;
+  }
+
+  pre.code {
+    background: var(--code-bg);
+    color: var(--code-text);
+    border: 1px solid var(--code-border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    overflow-x: auto;
+    font-size: 13px;
+    line-height: 1.6;
+    position: relative;
+  }
+  .codewrap { position: relative; margin: 14px 0; }
+  .copybtn {
+    position: absolute; top: 8px; right: 8px;
+    font-family: var(--mono); font-size: 11px;
+    background: var(--surface-2); color: var(--text);
+    border: 1px solid var(--border); border-radius: 4px;
+    padding: 4px 8px; cursor: pointer;
+  }
+  .copybtn:hover { background: var(--border); }
+
+  /* ---------- team tabs ---------- */
+  .teamtabs { display: flex; gap: 8px; margin-bottom: 18px; flex-wrap: wrap; }
+  .teambtn {
+    font-family: var(--mono); font-size: 13px;
+    border: 1px solid var(--border); border-radius: 999px;
+    padding: 7px 14px; cursor: pointer; background: var(--surface); color: var(--text-dim);
+  }
+  .teambtn[data-team="a"].active { background: var(--person-a); color: #fff; border-color: var(--person-a); }
+  .teambtn[data-team="b"].active { background: var(--person-b); color: #fff; border-color: var(--person-b); }
+
+  .teampanel { display: none; }
+  .teampanel.active { display: block; }
+  .teampanel .ownerchip {
+    display: inline-block; font-family: var(--mono); font-size: 11px;
+    letter-spacing: .04em; border-radius: 999px; padding: 3px 10px; margin-bottom: 14px;
+  }
+  .teampanel[data-team="a"] .ownerchip { background: var(--person-a-bg); color: var(--person-a); }
+  .teampanel[data-team="b"] .ownerchip { background: var(--person-b-bg); color: var(--person-b); }
+
+  details.task {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    margin-bottom: 10px; padding: 0;
+  }
+  details.task > summary {
+    list-style: none; cursor: pointer; padding: 12px 14px; display: flex; gap: 10px; align-items: flex-start;
+    font-weight: 600; font-size: 14.5px;
+  }
+  details.task > summary::-webkit-details-marker { display: none; }
+  details.task > summary::before {
+    content: "▸"; color: var(--text-dim); flex-shrink: 0; transition: transform .15s ease;
+  }
+  details.task[open] > summary::before { transform: rotate(90deg); color: var(--accent); }
+  details.task .body { padding: 0 14px 14px 34px; color: var(--text-dim); font-size: 13.8px; }
+  details.task .body p { margin: 0 0 8px; }
+  details.task .hint { color: var(--text); background: var(--surface-2); border-radius: 4px; padding: 8px 10px; margin-top: 6px; font-size: 13px; }
+  details.task .hint b { color: var(--accent); }
+
+  /* ---------- architecture diagrams ---------- */
+  .flowrow { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 16px 0; }
+  .flowcard {
+    border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; background: var(--surface);
+    font-size: 12.5px;
+  }
+  .flowcard .t { font-family: var(--mono); font-size: 11.5px; font-weight: 600; margin-bottom: 6px; display:block; }
+  .flowcard.listen { border-top: 3px solid var(--person-a); }
+  .flowcard.listen .t { color: var(--person-a); }
+  .flowcard.read { border-top: 3px solid var(--accent); }
+  .flowcard.read .t { color: var(--accent); }
+  .flowcard.write { border-top: 3px solid var(--accent-warm); }
+  .flowcard.write .t { color: var(--accent-warm); }
+  .flowcard.nothing { border-top: 3px solid var(--text-dim); opacity: .75; }
+  .flowcard.nothing .t { color: var(--text-dim); }
+
+  .loopnote {
+    text-align: center; font-family: var(--mono); font-size: 12px; color: var(--text-dim);
+    margin: 6px 0;
+  }
+
+  .timeline { display: grid; gap: 0; margin: 18px 0; }
+  .tl-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; position: relative; padding: 10px 0; }
+  .tl-row:not(:last-child) { border-bottom: 1px dashed var(--border); }
+  .tl-client, .tl-server { border-radius: var(--radius); padding: 10px 12px; font-size: 13px; }
+  .tl-client { background: var(--person-a-bg); color: var(--person-a); justify-self: start; max-width: 90%; }
+  .tl-server { background: var(--surface-2); color: var(--text); justify-self: end; max-width: 95%; }
+  .tl-row.empty-client .tl-client { visibility: hidden; }
+  .tl-state {
+    grid-column: 1 / -1; font-family: var(--mono); font-size: 11.5px; color: var(--accent);
+    margin-top: 4px;
+  }
+  .tl-state .k { color: var(--text-dim); }
+
+  /* ---------- checklist ---------- */
+  .checklist { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+  .checklist li {
+    display: flex; align-items: flex-start; gap: 10px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 10px 12px; font-size: 14px;
+  }
+  .checklist input { margin-top: 3px; accent-color: var(--accent); width: 16px; height: 16px; flex-shrink: 0; }
+  .checklist label.done { color: var(--text-dim); text-decoration: line-through; }
+  .progress-wrap { background: var(--surface-2); border-radius: 999px; height: 8px; overflow: hidden; margin: 10px 0 20px; }
+  .progress-bar { height: 100%; background: var(--accent); width: 0%; transition: width .2s ease; }
+  .progress-label { font-family: var(--mono); font-size: 12px; color: var(--text-dim); margin-bottom: 4px; }
+
+  footer {
+    padding: 20px 32px 40px;
+    color: var(--text-dim);
+    font-size: 12.5px;
+    border-top: 1px solid var(--border);
+    margin-top: 10px;
+  }
+
+  @media (max-width: 760px) {
+    .app { flex-direction: column; }
+    .sidebar {
+      width: 100%; display: flex; overflow-x: auto; gap: 4px;
+      border-right: none; border-bottom: 1px solid var(--border);
+      padding: 10px; white-space: nowrap;
+    }
+    .sidebar .label { display: none; }
+    .navbtn { width: auto; flex-shrink: 0; }
+    main { padding: 20px 16px 50px; }
+    .flowrow { grid-template-columns: 1fr 1fr; }
+    .tl-row { grid-template-columns: 1fr; }
+    .tl-client, .tl-server { justify-self: stretch; max-width: 100%; }
+  }
+</style>
+</head>
+<body>
+
+<div class="titlebar">
+  <div class="dots"><span></span><span></span><span></span></div>
+  <div class="name"><b>ircserv</b> — #ft_irc-planning</div>
+</div>
+
+<div class="app">
+  <nav class="sidebar" id="sidebar">
+    <div class="label">Channels</div>
+    <button class="navbtn" data-target="overview"><span class="hash">#</span>overview</button>
+    <button class="navbtn" data-target="constraints"><span class="hash">#</span>constraints</button>
+    <button class="navbtn" data-target="team"><span class="hash">#</span>who-does-what</button>
+    <button class="navbtn" data-target="architecture"><span class="hash">#</span>architecture</button>
+    <button class="navbtn" data-target="testing"><span class="hash">#</span>testing</button>
+    <button class="navbtn" data-target="checklist"><span class="hash">#</span>checklist</button>
+  </nav>
+
+  <main>
+
+    <!-- OVERVIEW -->
+    <section class="panel" id="panel-overview">
+      <h2 class="pagehead"><span class="hash">#</span>overview</h2>
+      <div class="topicbar">Topic: build <b>ircserv</b>, a C++98 IRC server — pass the mandatory part, two people, one <code class="inline">poll()</code> loop.</div>
+
+      <p>This page walks through the whole plan for <b>ft_irc</b>: the non-negotiable rules, who builds what, how the event loop is shaped, and what to test before the defense. It mirrors <code class="inline">plan.md</code> and <code class="inline">architecture.md</code> in the repo, dressed up for a quick read.</p>
+
+      <div class="stats">
+        <div class="stat"><div class="n">7–10</div><div class="d">full days to a passable mandatory part</div></div>
+        <div class="stat"><div class="n">1</div><div class="d">poll() call, no exceptions</div></div>
+        <div class="stat"><div class="n">2</div><div class="d">roles: core/network, IRC logic</div></div>
+        <div class="stat"><div class="n">0</div><div class="d">forks, external libs, or blocking I/O</div></div>
+      </div>
+
+      <h3 style="font-size:15px;margin-bottom:10px;">Rough timeline</h3>
+      <ul class="rulelist" style="margin-bottom:28px;">
+        <li><span class="tag">DAY 0</span> Skeleton together: socket, poll loop, echo server, Makefile.</li>
+        <li><span class="tag">2–3d</span> Person A: non-blocking network core + buffering.</li>
+        <li><span class="tag">2–3d</span> Person B: registration, channels, operator commands.</li>
+        <li><span class="tag">1–2d</span> Integration + testing against the reference client.</li>
+        <li><span class="tag">1d</span> README, cleanup, crash/edge-case hunting.</li>
+      </ul>
+
+      <div class="callout">
+        <span class="k">Biggest risk of a rewrite</span>
+        A poorly shaped <code class="inline">poll()</code> loop or wrong buffer handling early on. See <a href="javascript:void(0)" onclick="go('architecture')">#architecture</a> before writing <code class="inline">Server.cpp</code>.
+      </div>
+    </section>
+
+    <!-- CONSTRAINTS -->
+    <section class="panel" id="panel-constraints">
+      <h2 class="pagehead"><span class="hash">#</span>constraints</h2>
+      <div class="topicbar">Topic: rules that set the grade to <b>0</b> if broken — read before writing a single socket call.</div>
+
+      <div class="callout danger">
+        <span class="k">Grade = 0 if any of these happen</span>
+        The program crashes or quits unexpectedly, for any reason, including running out of memory.
+      </div>
+      <div class="callout danger">
+        <span class="k">Grade = 0</span>
+        Any <code class="inline">read</code>/<code class="inline">recv</code>/<code class="inline">write</code>/<code class="inline">send</code> happens on a fd that wasn't reported ready by the single <code class="inline">poll()</code>.
+      </div>
+      <div class="callout danger">
+        <span class="k">Grade = 0</span>
+        Deciding what to do next based on <code class="inline">errno</code> after a <code class="inline">recv</code>/<code class="inline">send</code> (e.g. retrying on <code class="inline">EAGAIN</code>).
+      </div>
+
+      <h3 style="font-size:15px;margin:22px 0 10px;">Everything else that's mandatory</h3>
+      <ul class="rulelist">
+        <li><span class="tag">BUILD</span> Makefile with <code class="inline">NAME</code>, <code class="inline">all</code>, <code class="inline">clean</code>, <code class="inline">fclean</code>, <code class="inline">re</code>, no needless relinking.</li>
+        <li><span class="tag">LANG</span> C++98, compiled with <code class="inline">-Wall -Wextra -Werror</code>, no Boost, no external libs.</li>
+        <li><span class="tag">I/O</span> No forking. Every socket non-blocking. Exactly one poll()/select()/kqueue()/epoll() for everything — accept, read, and write.</li>
+        <li><span class="tag">NET</span> TCP/IP (v4 or v6). Must handle messages arriving split across several packets.</li>
+        <li><span class="tag">FEATURES</span> PASS/NICK/USER, JOIN, PRIVMSG, operators vs regular users, KICK, INVITE, TOPIC, MODE (i/t/k/o/l).</li>
+        <li><span class="tag">SCOPE</span> No IRC client of our own, no server-to-server linking.</li>
+      </ul>
+
+      <div class="codewrap">
+        <button class="copybtn" data-copy="nc -C 127.0.0.1 6667">copy</button>
+        <pre class="code">$ nc -C 127.0.0.1 6667
+com^Dman^Dd
+$</pre>
+      </div>
+      <p style="color:var(--text-dim);font-size:13px;">The subject's own fragmentation test: send a command split in three pieces with Ctrl+D. The server has to reassemble it before treating it as one command — this is exactly what the buffering in <a href="javascript:void(0)" onclick="go('architecture')">#architecture</a> is for.</p>
+    </section>
+
+    <!-- TEAM -->
+    <section class="panel" id="panel-team">
+      <h2 class="pagehead"><span class="hash">#</span>who-does-what</h2>
+      <div class="topicbar">Topic: split along the seam that naturally exists — network plumbing vs. IRC logic.</div>
+
+      <div class="teamtabs">
+        <button class="teambtn active" data-team="a">Person A — Core &amp; Network</button>
+        <button class="teambtn" data-team="b">Person B — IRC Logic &amp; Commands</button>
+      </div>
+
+      <div class="teampanel active" data-team="a">
+        <span class="ownerchip">OWNS: sockets, poll loop, buffers, Client class</span>
+
+        <details class="task" open>
+          <summary>CLI &amp; bootstrap</summary>
+          <div class="body">
+            <p>Parse <code class="inline">./ircserv &lt;port&gt; &lt;password&gt;</code>, validate the port, fail cleanly on garbage input.</p>
+            <div class="hint"><b>Hint:</b> reject non-numeric ports early. Don't over-engineer validation — just never crash on it.</div>
+          </div>
+        </details>
+
+        <details class="task">
+          <summary>Listening socket</summary>
+          <div class="body">
+            <p><code class="inline">socket()</code> → <code class="inline">setsockopt(SO_REUSEADDR)</code> → <code class="inline">bind()</code> → <code class="inline">listen()</code>, then set it non-blocking.</p>
+            <div class="hint"><b>Hint:</b> <code class="inline">fcntl(fd, F_SETFL, O_NONBLOCK)</code> is the only flag form allowed on macOS per the subject — and it works identically on the school's Linux machines, so use it everywhere.</div>
+          </div>
+        </details>
+
+        <details class="task">
+          <summary>The single poll() loop</summary>
+          <div class="body">
+            <p>One <code class="inline">std::vector&lt;pollfd&gt;</code>: index 0 is the listening socket, the rest are clients. Accept on <code class="inline">POLLIN</code> at index 0, read on <code class="inline">POLLIN</code> elsewhere, flush on <code class="inline">POLLOUT</code>.</p>
+            <div class="hint"><b>Hint:</b> this is the single most graded part of the project. Keep it boring and explicit — full diagram in <a href="javascript:void(0)" onclick="go('architecture')">#architecture</a>.</div>
+          </div>
+        </details>
+
+        <details class="task">
+          <summary>Per-client buffering</summary>
+          <div class="body">
+            <p>An input <code class="inline">std::string</code> per client that accumulates bytes and peels off full lines; an output <code class="inline">std::string</code> that queues replies until the socket is writable.</p>
+            <div class="hint"><b>Hint:</b> this is exactly what makes the <code class="inline">nc -C</code> fragmentation test pass.</div>
+          </div>
+        </details>
+
+        <details class="task">
+          <summary>Client class</summary>
+          <div class="body">
+            <p>fd, input/output buffers, registration state (got PASS? NICK? USER?), nickname, username, joined channels.</p>
+          </div>
+        </details>
+
+        <details class="task">
+          <summary>Disconnection handling</summary>
+          <div class="body">
+            <p>On <code class="inline">recv() == 0</code> or an error: leave all channels, close the fd, erase from the pollfd vector.</p>
+            <div class="hint"><b>Hint:</b> never erase while iterating that vector — collect fds to drop, remove them after the loop.</div>
+          </div>
+        </details>
+
+        <details class="task">
+          <summary>Low-level command splitting</summary>
+          <div class="body">
+            <p>Turn a raw line into <code class="inline">(command, params[])</code> per IRC grammar, then hand it to Person B's dispatcher.</p>
+          </div>
+        </details>
+
+        <div class="callout" style="margin-top:18px;">
+          <span class="k">Where to start</span>
+          A listening socket + poll loop that echoes back whatever it receives — before any IRC logic exists. Test with plain <code class="inline">nc</code>.
+        </div>
+      </div>
+
+      <div class="teampanel" data-team="b">
+        <span class="ownerchip">OWNS: Channel class, command handlers, numeric replies</span>
+
+        <details class="task" open>
+          <summary>Channel class</summary>
+          <div class="body">
+            <p>Name, topic, members with an operator flag each, invite list, optional key, optional user limit. Modes: <code class="inline">i t k o l</code>.</p>
+            <div class="hint"><b>Hint:</b> a <code class="inline">std::map&lt;std::string, Client*&gt;</code> for members makes "is this nick here" and "who's an op" cheap to check.</div>
+          </div>
+        </details>
+
+        <details class="task">
+          <summary>Registration: PASS, NICK, USER</summary>
+          <div class="body">
+            <p>PASS must match the server password. NICK rejects duplicates (numeric 433). A client only counts as registered once all three landed.</p>
+            <div class="hint"><b>Hint:</b> ignore/queue stray commands politely until registration finishes — don't crash on out-of-order input.</div>
+          </div>
+        </details>
+
+        <details class="task">
+          <summary>Core messaging: JOIN, PART, PRIVMSG, QUIT</summary>
+          <div class="body">
+            <p>JOIN creates the channel if needed (creator becomes operator), checks invite-only/key/limit. PRIVMSG forwards to every other member of a channel, or to a nick directly.</p>
+            <div class="hint"><b>Hint:</b> always go through Person A's "queue to client's output buffer" helper — never call <code class="inline">send()</code> from this layer directly.</div>
+          </div>
+        </details>
+
+        <details class="task">
+          <summary>Operator commands: KICK, INVITE, TOPIC, MODE</summary>
+          <div class="body">
+            <p>KICK ejects, INVITE lets a user bypass invite-only, TOPIC respects mode <code class="inline">t</code>, MODE toggles <code class="inline">i t k o l</code>.</p>
+            <div class="hint"><b>Hint:</b> write one <code class="inline">isOperator(channel, client)</code> helper and reuse it everywhere instead of repeating the check.</div>
+          </div>
+        </details>
+
+        <details class="task">
+          <summary>Numeric replies</summary>
+          <div class="body">
+            <p>001 Welcome, 433 nickname in use, 461 not enough params, 442 not on channel, 482 not a channel operator, 332/324 topic/mode, etc. — whatever the reference client expects.</p>
+            <div class="hint"><b>Hint:</b> one formatter — <code class="inline">:server &lt;code&gt; &lt;nick&gt; &lt;rest&gt;\r\n</code> — reused everywhere keeps replies consistent.</div>
+          </div>
+        </details>
+
+        <details class="task">
+          <summary>Command dispatcher</summary>
+          <div class="body">
+            <p>A map from command name to handler function, called by Person A once a full line has been parsed.</p>
+          </div>
+        </details>
+
+        <div class="callout" style="margin-top:18px;">
+          <span class="k">Where to start</span>
+          NICK/USER/JOIN/PRIVMSG first — everything else builds on them. Test early against the chosen reference client, not just <code class="inline">nc</code>.
+        </div>
+      </div>
+
+      <h3 style="font-size:15px;margin:24px 0 10px;">Shared contract — agree on this before splitting</h3>
+      <p style="color:var(--text-dim);">A thin <code class="inline">Server</code> class ties both sides together. Lock this interface on Day 0 so each side can stub the other and work in parallel.</p>
+      <div class="codewrap">
+        <button class="copybtn" data-copy="class Server {&#10;public:&#10;    void queueToClient(int fd, const std::string &amp;msg);&#10;    Client *getClientByNick(const std::string &amp;nick);&#10;    Channel *getChannel(const std::string &amp;name);&#10;    Channel *getOrCreateChannel(const std::string &amp;name);&#10;    void removeClient(int fd);&#10;};">copy</button>
+        <pre class="code">class Server {
+public:
+    void queueToClient(int fd, const std::string &amp;msg);   // B calls this, A implements it
+    Client *getClientByNick(const std::string &amp;nick);
+    Channel *getChannel(const std::string &amp;name);
+    Channel *getOrCreateChannel(const std::string &amp;name);
+    void removeClient(int fd);                            // cleanup on disconnect
+};</pre>
+      </div>
+    </section>
+
+    <!-- ARCHITECTURE -->
+    <section class="panel" id="panel-architecture">
+      <h2 class="pagehead"><span class="hash">#</span>architecture</h2>
+      <div class="topicbar">Topic: the shape of the one <code class="inline">poll()</code> loop, settled before <code class="inline">Server.cpp</code> gets written.</div>
+
+      <p>Full detail lives in <code class="inline">architecture.md</code>. Here's the shape of it.</p>
+
+      <h3 style="font-size:15px;margin:18px 0 8px;">1. The loop mechanics</h3>
+      <p style="color:var(--text-dim);">Build the pollfd list → call <code class="inline">poll()</code> once → react to whatever came back → clean up after.</p>
+
+      <div class="loopnote">build <code class="inline">fds = [listening, client1, client2, …]</code></div>
+      <div class="loopnote">↓</div>
+      <div class="loopnote" style="font-weight:600;color:var(--text);">poll(fds, timeout) — the ONE call</div>
+      <div class="loopnote">↓ for each fd with revents set</div>
+
+      <div class="flowrow">
+        <div class="flowcard listen"><span class="t">LISTEN · POLLIN</span>accept() a new client, set it non-blocking, push a new pollfd entry.</div>
+        <div class="flowcard read"><span class="t">CLIENT · POLLIN</span>one recv(), append to that client's input buffer, peel off full lines.</div>
+        <div class="flowcard write"><span class="t">CLIENT · POLLOUT</span>one send() from that client's output buffer, only when it's non-empty.</div>
+        <div class="flowcard nothing"><span class="t">revents == 0</span>nothing happened on this fd this round — skip it.</div>
+      </div>
+      <div class="loopnote">↓</div>
+      <div class="loopnote">remove disconnected clients — <b style="color:var(--danger)">after</b> the loop, never during it</div>
+
+      <h4 style="font-size:13px;margin:22px 0 10px;color:var(--text-dim);">Pitfalls that force a rewrite if missed</h4>
+      <div class="callout danger"><span class="k">⚠ fd reuse</span>A fresh <code class="inline">accept()</code> fd is <b>not</b> non-blocking by default — set it yourself, every time.</div>
+      <div class="callout danger"><span class="k">⚠ iteration</span>Never erase a pollfd entry mid-loop. Collect fds to drop, remove them after.</div>
+      <div class="callout danger"><span class="k">⚠ stale state</span>The OS can hand a closed fd's number to a brand-new client. Fully erase the old <code class="inline">Client</code> first.</div>
+      <div class="callout"><span class="k">✓ actually fine</span>Checking <code class="inline">errno</code> right after <code class="inline">poll()</code> itself (e.g. <code class="inline">EINTR</code>) is allowed — the ban is on doing it after <code class="inline">recv</code>/<code class="inline">send</code>.</div>
+
+      <h3 style="font-size:15px;margin:30px 0 8px;">2. One client's journey (the fragmented-message case)</h3>
+      <p style="color:var(--text-dim);">The exact scenario the subject's <code class="inline">nc -C</code> test checks: <code class="inline">"NIC"</code> then <code class="inline">"K bob\r\n"</code>.</p>
+
+      <div class="timeline">
+        <div class="tl-row">
+          <div class="tl-client">connect()</div>
+          <div class="tl-server">poll() sees POLLIN on listening fd → accept() → fd 7, set non-blocking</div>
+          <div class="tl-state"><span class="k">inbuf =</span> ""</div>
+        </div>
+        <div class="tl-row">
+          <div class="tl-client">send "NIC"</div>
+          <div class="tl-server">recv(7) → "NIC" (3 bytes), appended — no line terminator yet, wait</div>
+          <div class="tl-state"><span class="k">inbuf =</span> "NIC"</div>
+        </div>
+        <div class="tl-row">
+          <div class="tl-client">send "K bob\r\n"</div>
+          <div class="tl-server">recv(7) → "K bob\r\n", appended — line complete, extract "NICK bob"</div>
+          <div class="tl-state"><span class="k">inbuf =</span> "" <span class="k" style="margin-left:14px;">nickname =</span> "bob"</div>
+        </div>
+        <div class="tl-row empty-client">
+          <div class="tl-client"></div>
+          <div class="tl-server">dispatchCommand → queueReply(":server 001 Welcome…") → ask poll() to watch POLLOUT</div>
+          <div class="tl-state"><span class="k">outbuf =</span> ":server 001 …\r\n"</div>
+        </div>
+        <div class="tl-row empty-client">
+          <div class="tl-client"></div>
+          <div class="tl-server">poll() sees POLLOUT on fd 7 → send() → all bytes left → stop watching POLLOUT</div>
+          <div class="tl-state"><span class="k">outbuf =</span> ""</div>
+        </div>
+        <div class="tl-row">
+          <div class="tl-client">receives "001 Welcome bob"</div>
+          <div class="tl-server"></div>
+          <div class="tl-state"></div>
+        </div>
+      </div>
+
+      <h4 style="font-size:13px;margin:22px 0 10px;color:var(--text-dim);">Pitfalls specific to buffering</h4>
+      <div class="callout danger"><span class="k">⚠ more than one line</span>Use a <code class="inline">while</code>, not an <code class="inline">if</code>, when pulling lines out — one recv() can deliver several commands at once.</div>
+      <div class="callout danger"><span class="k">⚠ line endings</span>Some clients (raw <code class="inline">nc</code>) send bare <code class="inline">\n</code>. Split on <code class="inline">\n</code>, then strip a trailing <code class="inline">\r</code> if present.</div>
+      <div class="callout danger"><span class="k">⚠ partial send</span><code class="inline">send()</code> can write less than the whole buffer. Erase only the bytes it actually reported sending.</div>
+
+      <div class="codewrap">
+        <button class="copybtn" data-copy="void handleClientRead(int fd) {&#10;    char buf[1024];&#10;    int n = recv(fd, buf, sizeof(buf), 0); // exactly ONE recv() call&#10;&#10;    if (n &lt;= 0) { markForRemoval(fd); return; } // 0 = closed, &lt;0 = error, no retry&#10;&#10;    Client &amp;c = *clients[fd];&#10;    c.inbuf.append(buf, n);&#10;&#10;    size_t pos;&#10;    while ((pos = c.inbuf.find('\n')) != std::string::npos) {&#10;        std::string line = c.inbuf.substr(0, pos);&#10;        if (!line.empty() &amp;&amp; line[line.size()-1] == '\r') line.erase(line.size()-1);&#10;        c.inbuf.erase(0, pos + 1);&#10;        dispatchCommand(c, line);&#10;    }&#10;}">copy</button>
+        <pre class="code">void handleClientRead(int fd) {
+    char buf[1024];
+    int n = recv(fd, buf, sizeof(buf), 0); // exactly ONE recv() call
+
+    if (n &lt;= 0) { markForRemoval(fd); return; } // 0 = closed, &lt;0 = error, no retry
+
+    Client &amp;c = *clients[fd];
+    c.inbuf.append(buf, n);
+
+    size_t pos;
+    while ((pos = c.inbuf.find('\n')) != std::string::npos) {
+        std::string line = c.inbuf.substr(0, pos);
+        if (!line.empty() &amp;&amp; line[line.size()-1] == '\r') line.erase(line.size()-1);
+        c.inbuf.erase(0, pos + 1);
+        dispatchCommand(c, line);
+    }
+}</pre>
+      </div>
+
+      <p style="margin-top:18px;"><a href="javascript:void(0)" onclick="go('team')">→ back to #who-does-what</a> · both of these belong to Person A; <code class="inline">dispatchCommand(...)</code> and everything it calls is Person B's.</p>
+    </section>
+
+    <!-- TESTING -->
+    <section class="panel" id="panel-testing">
+      <h2 class="pagehead"><span class="hash">#</span>testing</h2>
+      <div class="topicbar">Topic: things to throw at the server before trusting it, in rough order.</div>
+
+      <ul class="rulelist">
+        <li><span class="tag">01</span><code class="inline">nc -C 127.0.0.1 &lt;port&gt;</code> fragmented-command test from the subject.</li>
+        <li><span class="tag">02</span>Two <code class="inline">nc</code> clients at once — one sends to a channel, the other receives.</li>
+        <li><span class="tag">03</span>Reference client: auth with password, set nick/user, join, PRIVMSG both ways.</li>
+        <li><span class="tag">04</span>Wrong password rejected cleanly.</li>
+        <li><span class="tag">05</span>Duplicate nickname rejected (433).</li>
+        <li><span class="tag">06</span>Mid-channel disconnect doesn't crash the server or leave ghosts.</li>
+        <li><span class="tag">07</span><code class="inline">-Wall -Wextra -Werror -std=c++98</code> compiles clean.</li>
+      </ul>
+    </section>
+
+    <!-- CHECKLIST -->
+    <section class="panel" id="panel-checklist">
+      <h2 class="pagehead"><span class="hash">#</span>checklist</h2>
+      <div class="topicbar">Topic: mandatory-part features. Ticks are saved locally in this browser only.</div>
+
+      <div class="progress-label" id="progress-label">0 / 0 done</div>
+      <div class="progress-wrap"><div class="progress-bar" id="progress-bar"></div></div>
+
+      <ul class="checklist" id="checklist"></ul>
+
+      <div class="callout" style="margin-top:20px;">
+        <span class="k">Reminder</span>
+        <code class="inline">README.md</code> at repo root, in English, first line italicized: <i>This project has been created as part of the 42 curriculum by &lt;login1&gt;, &lt;login2&gt;.</i> Plus Description / Instructions / Resources sections (including how AI was used, and where).
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<footer>
+  Built from <code class="inline">plan.md</code> and <code class="inline">architecture.md</code> — this is a living plan, not a spec. Adjust it as you actually build.
+</footer>
+
+<script>
+(function () {
+  "use strict";
+
+  var sections = ["overview", "constraints", "team", "architecture", "testing", "checklist"];
+
+  function go(id) {
+    if (sections.indexOf(id) === -1) id = "overview";
+    document.querySelectorAll(".panel").forEach(function (p) {
+      p.classList.toggle("active", p.id === "panel-" + id);
+    });
+    document.querySelectorAll(".navbtn").forEach(function (b) {
+      b.classList.toggle("active", b.dataset.target === id);
+    });
+    try { history.replaceState(null, "", "#" + id); } catch (e) {}
+  }
+  window.go = go;
+
+  document.querySelectorAll(".navbtn").forEach(function (btn) {
+    btn.addEventListener("click", function () { go(btn.dataset.target); });
+  });
+
+  var initial = (location.hash || "").replace("#", "");
+  go(sections.indexOf(initial) !== -1 ? initial : "overview");
+
+  // team tabs
+  document.querySelectorAll(".teambtn").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var team = btn.dataset.team;
+      document.querySelectorAll(".teambtn").forEach(function (b) { b.classList.toggle("active", b === btn); });
+      document.querySelectorAll(".teampanel").forEach(function (p) { p.classList.toggle("active", p.dataset.team === team); });
+    });
+  });
+
+  // copy buttons
+  document.querySelectorAll(".copybtn").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var text = btn.getAttribute("data-copy") || btn.parentElement.querySelector("pre").textContent;
+      var done = function () { btn.textContent = "copied"; setTimeout(function () { btn.textContent = "copy"; }, 1200); };
+      try {
+        navigator.clipboard.writeText(text).then(done).catch(function () { fallbackCopy(btn); });
+      } catch (e) {
+        fallbackCopy(btn);
+      }
+    });
+  });
+  function fallbackCopy(btn) {
+    var pre = btn.parentElement.querySelector("pre");
+    try {
+      var range = document.createRange();
+      range.selectNodeContents(pre);
+      var sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+    } catch (e) {}
+  }
+
+  // checklist, persisted per-browser only
+  var items = [
+    "Single poll() call drives accept + read + write for every fd",
+    "Every socket (listening + accepted) set non-blocking",
+    "No fork() anywhere in the codebase",
+    "PASS / NICK / USER registration works end-to-end",
+    "JOIN creates or joins a channel, creator becomes operator",
+    "PRIVMSG forwards to channel members and to a nick directly",
+    "KICK, INVITE, TOPIC implemented",
+    "MODE i / t / k / o / l implemented",
+    "Partial/fragmented commands (nc -C test) reassembled correctly",
+    "Client disconnect cleans up channels and pollfd entries safely",
+    "Compiles clean with -Wall -Wextra -Werror -std=c++98",
+    "README.md present with required sections"
+  ];
+
+  var listEl = document.getElementById("checklist");
+  var STORAGE_KEY = "ftirc-checklist-v1";
+  var state = {};
+  try { state = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}"); } catch (e) { state = {}; }
+
+  items.forEach(function (text, i) {
+    var li = document.createElement("li");
+    var cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.id = "chk-" + i;
+    cb.checked = !!state[i];
+    var label = document.createElement("label");
+    label.htmlFor = cb.id;
+    label.textContent = text;
+    if (cb.checked) label.classList.add("done");
+    cb.addEventListener("change", function () {
+      label.classList.toggle("done", cb.checked);
+      state[i] = cb.checked;
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {}
+      updateProgress();
+    });
+    li.appendChild(cb);
+    li.appendChild(label);
+    listEl.appendChild(li);
+  });
+
+  function updateProgress() {
+    var total = items.length;
+    var done = Object.keys(state).filter(function (k) { return state[k]; }).length;
+    document.getElementById("progress-label").textContent = done + " / " + total + " done";
+    document.getElementById("progress-bar").style.width = (total ? (done / total * 100) : 0) + "%";
+  }
+  updateProgress();
+})();
+</script>
+
+</body>
+</html>
