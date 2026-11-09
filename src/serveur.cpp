@@ -12,9 +12,35 @@
 
 #include "../header/serveur.hpp"
 
+void Server::setupSocket() {
+	_listenFd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	if (_listenFd < 0)
+		throw(std::runtime_error("Error setting socket"));
+	if (fcntl(_listenFd, F_SETFL, O_NONBLOCK) < 0)
+		throw(std::runtime_error("Error setting a new flag"));
+	int opt = 1;
+	if (setsockopt(_listenFd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(1)) < 0)
+		throw(std::runtime_error(std::strerror(errno)));
+	struct sockaddr_in addr;
+	std::memset(&addr, 0, sizeof(addr));
+	addr.sin_family = AF_INET;
+	addr.sin_port = htons(_port);
+	addr.sin_addr.s_addr = htonl(INADDR_ANY);
+	if (bind(_listenFd, reinterpret_cast< struct sockaddr *>(&addr), sizeof(addr)) < 0)
+		throw(std::runtime_error("Error assigning a name to a socket"));
+	if (listen(_listenFd, SOMAXCONN) < 0)
+		throw(std::runtime_error("Error setting socket to listen for connections"));
+	LOG_SERVER("Server started on port " << _port);
+	LOG_SERVER("Server started with the password " << "<" << _password << ">");
+}
+
 Server::Server(int port, const std::string &password)
 	: _port(port), _password(password), _listenFd(-1) {
 	setupSocket();
+}
+
+void Server::run() {
+	LOG_SERVER("Main loop not configured yet");
 }
 
 Server::~Server() {

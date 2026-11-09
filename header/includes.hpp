@@ -13,6 +13,12 @@
 #ifndef INCLUDES_HPP
 # define INCLUDES_HPP
 
+# define BLUE   "\033[34m"
+# define RESET  "\033[0m"
+
+# define LOG_SERVER(message) \
+    std::cout << BLUE "Server -> " RESET << message << std::endl;
+
 // ---------- C++ standard library ----------
 # include <iostream>     // std::cout, std::cerr: logs and error messages
 # include <string>       // std::string: all text data (nick, buffers, messages)

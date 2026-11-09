@@ -20,8 +20,8 @@
 
 class Server {
 private:
-    Server(const Server &other);                    // copying is forbidden (declared, not implemented)
-    Server &operator=(const Server &other);         // assignment is forbidden
+    Server(const Server &other) { (void)other; };                    // copying is forbidden (declared, not implemented)
+    Server &operator=(const Server &other) { (void)other; return (*this); };         // assignment is forbidden
 
     // --- network ---
     void    setupSocket();                          // socket(), setsockopt, non-blocking, bind(), listen()
