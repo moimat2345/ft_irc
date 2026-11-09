@@ -122,12 +122,70 @@ warnings. Only `Server::setupSocket()` and `Server::run()` are still
 missing to link `ircserv` — everything else is in place for whoever
 starts the network core.
 
-**Known follow-up (not urgent):** `Message::parse()` stores `_command`
-exactly as received; the header comment says "uppercase command name"
-but nothing uppercases it yet. IRC commands are case-insensitive, so
-either uppercase it in `parse()` or make `dispatch()` compare
-case-insensitively — pick one before relying on it.
+## 2026-11-09 — Theory notes, README, listening socket, poll() loop started
+ 
+**Goal for the session:** start the network core (Person A's half of
+`plan.md`): read up on the socket functions first, then get
+`Server::setupSocket()` working so `ircserv` really binds and listens on
+the port.
+ 
+**Did (committed):**
+- Started `NOTES.md` — theory notes written *before* the code: `recv()`,
+  `fcntl()` + `O_NONBLOCK`, `poll()` and `struct pollfd`, `socket()`,
+  `bind()` (why the port goes through `htons`), `listen()` (the backlog and
+  the socket → bind → listen → accept sequence), `setsockopt()`, and
+  connection-oriented vs connectionless sockets. Also linked RFC 2812 and
+  added `Service-Client.png`. The "Blocking and Non-Blocking File
+  Descriptors" section is only a stub for now.
+- Created `README.md`: the mandatory italic first line (with both logins,
+  `matnusko` and `nkuydin`) and the three required section headings.
+  Only "Resources" has content so far (one link about core socket
+  functions). **"Description" and "Instructions" are still empty** — the
+  subject requires both, plus a note in "Resources" on how AI was used.
+- `header/includes.hpp`: added `LOG_SERVER(message)` and the `BLUE`/`RESET`
+  ANSI colour codes, so server logs look like `Server -> ...`.
+- Implemented `Server::setupSocket()` in `src/serveur.cpp` (Person A,
+  task 2): `socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)` →
+  `fcntl(F_SETFL, O_NONBLOCK)` → `setsockopt(SO_REUSEADDR)` → `bind()` on
+  `INADDR_ANY`:port (struct zeroed with `memset`, port through `htons`) →
+  `listen(SOMAXCONN)`. Every step throws a `std::runtime_error` on failure,
+  which `main()` already catches and prints as `Fatal error: ...` instead
+  of crashing. `fcntl` is used only in the form the subject allows.
+  Port and password are logged at start-up.
+- Added `Server::run()` as a placeholder: it only logs "Main loop not
+  configured yet" and returns.
+- `header/serveur.hpp`: the private copy constructor and `operator=` now
+  have an empty inline body (`{ (void)other; ... }`) instead of being
+  declared only. The 2026-11-02 line saying they were "left unimplemented
+  on purpose" is therefore out of date.
+- `src/main.cpp`: `atoi` → `std::atoi` (C++ header style, as the subject
+  prefers).
 
-**Next:** `src/serveur_core.cpp` (or split `serveur.cpp`) — `setupSocket`,
-`run`, `acceptClient`, `readFromClient`, `flushClient`, `removeClient` —
-the network half, per `architecture.md`.
+
+**Started, commented out yet** (working tree at the time of writing):
+- `setupSocket()` now pushes the listening socket into `_pollFds`, so it
+  is index 0 of the vector, as `architecture.md` describes.
+- First skeleton of the single `poll()` loop in `Server::run()`:
+  `poll(&_pollFds[0], _pollFds.size(), -1)`, retry on `EINTR`, walk
+  through all fds, test `revents & POLLIN`, and split into "listening
+  socket → new client" / "client socket → read data". **Both branches are
+  only comments so far, so this version does not compile**
+  (`expected primary-expression before 'else'`, `serveur.cpp` line 60).
+  The last committed state does compile.
+- Whitespace-only tweak in `main.cpp`.
+
+**Status at end of session:** the committed code builds clean under
+`-Wall -Wextra -Werror -std=c++98`. `./ircserv <port> <password>` starts,
+binds, listens and then exits straight away, because `run()` is still a
+stub. Person A tasks 1 (CLI) and 2 (listening socket) are done, task 3
+(poll loop) is started, task 6 (disconnections) is not. Tasks 4, 5 and 7
+are mostly covered already by `client.cpp` / `message.cpp` from 11-08.
+
+
+**Next:** finish the loop, in the order of `architecture.md`:
+`acceptClient()` (`accept`, set non-blocking, `setHostname()` from the
+IP, new `pollfd` with `POLLIN`, new `Client` in `_clients`), then
+`readFromClient()` (one `recv()` → `appendToRecvBuffer()` → loop on
+`extractLine()`), then `flushClient()` with `POLLOUT` only when
+`hasPendingData()`, and `removeClient()`. First milestone from the plan:
+an echo test with `nc 127.0.0.1 <port>`.

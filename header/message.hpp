@@ -17,7 +17,7 @@
 
 class Message {
 private:
-	std::string                 _command;   // uppercase command name ("PASS", "JOIN"...)
+	std::string                 _command;   // command name ("PASS", "JOIN"...)
 	std::vector<std::string>    _params;    // parameters; the last one may contain spaces (after ':')
 public:
     Message();                                      // default constructor

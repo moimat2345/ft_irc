@@ -48,7 +48,7 @@ int main(int argc, char **argv)
 		return (1);
 	}
 	try {
-		Server server(std::atoi(argv[1] ), argv[2]);
+		Server server(std::atoi(argv[1]), argv[2]);
 		server.run();
 	} catch (const std::exception &e) {
 		std::cerr << "Fatal error: " << e.what() << std::endl;
