@@ -41,7 +41,6 @@ void Server::setupSocket() {
 }
 
 void Server::acceptClient() {
-	Client client;
 	struct sockaddr_in cliaddr;
 	struct pollfd NewCliPoll;
 	socklen_t cliaddrlen = sizeof(cliaddr);
@@ -54,20 +53,86 @@ void Server::acceptClient() {
 	NewCliPoll.events = POLLIN;
 	NewCliPoll.revents = 0;
 
-	client.setFd(incofd);
+	Client *client = new Client();
+	client->setFd(incofd);
 	// _clients.push_back(client);
-	_clients.insert(std::make_pair(incofd, &client));
+	_clients.insert(std::make_pair(incofd, client));
 	_pollFds.push_back(NewCliPoll);
-
-	LOG_CLIENT(incofd + " - Connected");
+	client->setHostname(inet_ntoa(cliaddr.sin_addr));
+	LOG_CLIENT(incofd << " - Connected");
 }
 
-void Server::handleClientMessage(int fd) {
+Client* Server::getClient(int fd) {
+	std::map<int, Client *>::iterator it;
 
+	it = _clients.find(fd);
+	if (it == _clients.end())
+		return (NULL);
+	return (it->second);
+}
+
+void Server::readFromClient(int fd) {
+	char buf[1024];
+	std::memset(buf, 0, sizeof(buf));
+
+	ssize_t bytes = recv(fd, buf, sizeof(buf) - 1, 0);
+	if (bytes <= 0) {
+		removeClient(fd);
+		LOG_CLIENT(fd << " - Disconnected");
+		return ;
+	}
+	std::string line;
+	Client *cli = getClient(fd);
+	if (!cli)
+		return ;
+	cli->appendToRecvBuffer(buf);
+	while (cli->extractLine(line)) {
+		processLine(*cli, line);
+		if (!getClient(fd))
+			return ;
+	}
+}
+
+void Server::flushClient(int fd) {
+	Client* cli = getClient(fd);
+	if (!cli || !cli->hasPendingData())
+		return ;
+	const std::string &buf = cli->getSendBuffer();
+	ssize_t sent = send(fd, buf.c_str(), buf.size(), 0);
+	if (sent <= 0) {
+		removeClient(fd);
+		return ;
+	}
+	cli->trimSendBuffer(sent);
 }
 
 void Server::removeClient(int fd) {
-	
+	std::map<int, Client *>::iterator ClientIt;
+
+	ClientIt = _clients.find(fd);
+	if (ClientIt == _clients.end())
+		return ;
+
+	std::map<std::string, Channel *>::iterator it = _channels.begin();
+	while (it != _channels.end()) {
+		if (it->second->isMember(ClientIt->second))
+			it->second->removeMember(ClientIt->second);
+		
+		if (it->second->getMemberCount() == 0)
+			_channels.erase(it++);
+		else
+			++it;
+	}
+
+	for (size_t i = 0; i < _pollFds.size(); ++i) {
+		if (_pollFds[i].fd == fd) {
+			_pollFds.erase(_pollFds.begin() + 1);
+			break ;
+		}
+	}
+
+	close(fd);
+	_clients.erase(ClientIt);
 }
 
 // ---------------- main part ------------------------------------- //
@@ -91,7 +156,7 @@ void Server::run() {
 	while (true) {
 		if (poll(&_pollFds[0], _pollFds.size(), -1) < 0) {
 			if (errno == EINTR) continue; // interrupted by signal, retry poll()
-			throw(std::runtime_error("poll() faild"));
+			throw(std::runtime_error("poll() failed"));
 		}
 		
 		for (size_t i = 0; i < _pollFds.size(); ++i) {
@@ -100,9 +165,18 @@ void Server::run() {
 			if (_pollFds[i].revents & POLLIN) {
 				if (_pollFds[i].fd == _listenFd)
 					acceptClient();
-				else
-					handleClientMessage(_pollFds[i].fd);
+				continue ;
 			}
+
+			if (_pollFds[i].revents & (POLLHUP | POLLERR | POLLNVAL)) {
+				removeClient(_pollFds[i].fd);
+				continue ;
+			}
+
+			if (_pollFds[i].revents & POLLIN) readFromClient(_pollFds[i].fd);
+			if (!getClient(_pollFds[i].fd))
+				continue ;
+			if (_pollFds[i].revents & POLLOUT) flushClient(_pollFds[i].fd);
 		}
 	}
 }

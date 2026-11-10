@@ -146,6 +146,10 @@ bool Client::hasPendingData() const {
 	return !_sendBuffer.empty();
 }
 
+void Client::trimSendBuffer(int end) {
+	_sendBuffer.erase(0, end);
+}
+
 std::string &Client::getSendBuffer() {
 	return _sendBuffer;
 }

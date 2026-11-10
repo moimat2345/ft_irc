@@ -15,7 +15,14 @@
 
 # define BLUE   "\033[34m"
 # define GREEN  "\033[32m"
+# define RED    "\033[31m"
 # define RESET  "\033[0m"
+
+# define LOG_ERR(message) \
+    std::cout << RED message RESET << std::endl
+
+# define LOG_INFO(message) \
+    std::cout << message << std::endl
 
 # define LOG_CLIENT(message) \
     std::cout << GREEN "Client -> " RESET << message << std::endl

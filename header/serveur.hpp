@@ -23,17 +23,18 @@ private:
     Server(const Server &other) { (void)other; };                    // copying is forbidden (declared, not implemented)
     Server &operator=(const Server &other) { (void)other; return (*this); };         // assignment is forbidden
 
+    Client* getClient(int fd);                      // find the client with fd
+
     // --- network ---
     void    setupSocket();                          // socket(), setsockopt, non-blocking, bind(), listen()
     void    acceptClient();                         // accept() a new connection and register it
-    void    handleClientMessage(int fd);
     void    readFromClient(int fd);                 // recv() data and process complete lines
     void    flushClient(int fd);                    // send() the pending data when the socket is ready
     void    removeClient(int fd);                   // remove from channels, close fd, delete the Client
 
     // --- processing ---
     void    processLine(Client &client, const std::string &line);   // parse a line into a Message and dispatch it
-    void    dispatchCommand(Client &client, const Message &msg);           // pick the right cmdXxx() for the command
+    void    dispatch(Client &client, const Message &msg);           // pick the right cmdXxx() for the command
 
     // --- commands ---
     void    cmdPass(Client &c, const Message &m);       // PASS: check the server password
@@ -60,7 +61,6 @@ private:
     int                         _listenFd;      // listening socket
     std::vector<struct pollfd>  _pollFds;       // all fds watched by poll()
     std::map<int, Client *>     _clients;       // fd -> Client
-    // std::vector<Client>       _clients;      // the vector of Clients
     std::map<std::string, Channel *> _channels; // channel name -> Channel
 	std::string                 _serverName;     // server name, used in the prefix of outgoing messages
 public:
