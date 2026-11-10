@@ -6,7 +6,7 @@
 /*   By: mateon <mateon@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/11/02 21:33:18 by mateon            #+#    #+#             */
-/*   Updated: 2026/11/08 21:27:38 by mateon           ###   ########.fr       */
+/*   Updated: 2026/11/10 09:53:58 by mateon           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -46,6 +46,7 @@ public:
     void    removeMember(Client *client);           // remove a user (also from operators/invited)
     bool    isMember(Client *client) const;         // is this user in the channel?
     size_t  getMemberCount() const;                 // number of users inside
+	const std::vector<Client *> &getMembers() const;  // list of users inside
 
     // --- operators ---
     void    addOperator(Client *client);            // give operator rights

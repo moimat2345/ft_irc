@@ -189,3 +189,71 @@ IP, new `pollfd` with `POLLIN`, new `Client` in `_clients`), then
 `extractLine()`), then `flushClient()` with `POLLOUT` only when
 `hasPendingData()`, and `removeClient()`. First milestone from the plan:
 an echo test with `nc 127.0.0.1 <port>`.
+
+
+## 2026-11-10 — Command layer (Person B): all 11 commands written
+
+Worked on the `commands` branch, in a new file `src/serveur_commands.cpp`
+(the `Server` class is split in two: `serveur.cpp` = network, owned by
+the teammate; `serveur_commands.cpp` = IRC logic, mine). The Makefile
+picks the new file up through `$(wildcard src/*.cpp)`.
+
+**Did:**
+- Helpers: `sendReply()` (builds `:server CODE nick text`, uses `*` while
+  the client has no nick yet), `findClientByNick()`, `findChannel()`,
+  `sendWelcome()` (001, sent once when PASS+NICK+USER are all done —
+  `Client::tryRegister()` now returns `bool` for that), and a
+  `_serverName` member initialised in the constructor.
+- `processLine()` / `dispatch()`: parse a line, ignore empty ones, refuse
+  anything but PASS/NICK/USER/QUIT before registration (451), answer 421
+  for unknown commands. `Message::parse()` now uppercases the command so
+  `join #x` typed by hand in `nc` works (`<cctype>` added to
+  `includes.hpp`).
+- Registration: `PASS` (464 on a wrong password), `NICK` (433 if taken;
+  after registration the change is announced to the channels the client
+  is in), `USER`. `PASS`/`USER` after registration answer 462.
+- `JOIN`: creates the channel and makes the creator operator; enforces
+  `+i` (473), `+k` (475, key = 2nd parameter), `+l` (471); rejects names
+  without `#` (476). The joiner gets its own JOIN back (`broadcast` with
+  `NULL`), then 332 (if a topic exists), 353 (names list, `@` for
+  operators) and 366. This needed a new `Channel::getMembers()`.
+- `PART`, `QUIT`, `KICK`: broadcast first, then remove the member. Empty
+  channels are deleted (`delete` + `erase`). In `QUIT` the map is walked
+  with a `while` and `erase(it++)`, because C++98 `erase` returns nothing.
+- `PRIVMSG` to a nick or a channel (401 / 404), `INVITE` (341),
+  `TOPIC` (331 / 332, 482 when `+t` and not operator).
+- `MODE` for `i t k o l`: `MODE #chan` alone answers 324; only operators
+  can change modes (482). The mode string is read letter by letter with an
+  `adding` flag (`+`/`-` stay active until the next sign) and a
+  `paramIndex` that only advances for `k`, `l` and `o`. The broadcast
+  contains the signs and letters first, then the parameters
+  (`MODE #chan +ik-l secret`), built with a small `recordMode()` helper.
+  `+l` uses `strtol` (no `std::stoul`, which is C++11).
+
+**Bugs found while reviewing, fixed the same day:**
+- `PRIVMSG #nochannel hi` dereferenced a `NULL` channel (the `NULL` test
+  only protected the first `if` branch).
+- Nobody ever became operator, so KICK / INVITE / MODE were unusable.
+- Broadcast of `MODE` had no parameters and spaces between letters, which
+  clients parse wrongly.
+- `QUIT` loop incremented the iterator twice; `KICK` tested the member
+  count before removing the target; `JOIN` had excluded the joiner from
+  its own JOIN message.
+
+**Status at end of session:** every object compiles clean under
+`-Wall -Wextra -Werror -std=c++98`. The only link error left is
+`Server::removeClient(int)` (teammate's part, called by `cmdQuit`).
+Nothing of the command layer has been run against a real client yet:
+the server still cannot accept connections.
+
+**Not done / known gaps:** PING/PONG (not in the subject, skipped on
+purpose); `KICK` has no reason; `INVITE` does not check 443;
+`MODE #chan b` and user modes answer 472 / 403.
+
+**Next:** merge `commands` into `main` once the teammate's network core
+is in, then test with two `nc` clients and the reference client. For the
+teammate: `acceptClient()` must call `setHostname()` (the prefix is
+`nick!user@` otherwise), and after each `processLine()` the client may
+have been deleted by QUIT, so the read loop must check that the fd is
+still in `_clients`. Still open on my side: README "Description" and
+"Instructions", and the AI-usage note.

@@ -6,7 +6,7 @@
 /*   By: mateon <mateon@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/11/08 21:17:06 by mateon            #+#    #+#             */
-/*   Updated: 2026/11/08 22:08:21 by mateon           ###   ########.fr       */
+/*   Updated: 2026/11/10 09:54:29 by mateon           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -79,6 +79,10 @@ bool Channel::isMember(Client *client) const {
 
 size_t Channel::getMemberCount() const {
 	return _members.size();
+}
+
+const std::vector<Client *> &Channel::getMembers() const {
+	return _members;
 }
 
 // --- operators ---

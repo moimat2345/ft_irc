@@ -6,7 +6,7 @@
 /*   By: mateon <mateon@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/11/02 21:30:06 by mateon            #+#    #+#             */
-/*   Updated: 2026/11/02 21:31:53 by mateon           ###   ########.fr       */
+/*   Updated: 2026/11/10 03:08:20 by mateon           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -52,6 +52,7 @@ private:
     Client  *findClientByNick(const std::string &nick);     // returns NULL if nobody has this nick
     Channel *findChannel(const std::string &name);          // returns NULL if the channel doesn't exist
     void    sendReply(Client &c, int code, const std::string &text);    // send a numeric reply ("001", "433"...)
+    void    sendWelcome(Client &c);                                     // send the registration numeric(s), once
 
     // --- data ---
     int                         _port;          // port the server listens on
@@ -61,7 +62,7 @@ private:
     std::map<int, Client *>     _clients;       // fd -> Client
     // std::vector<Client>       _clients;      // the vector of Clients
     std::map<std::string, Channel *> _channels; // channel name -> Channel
-
+	std::string                 _serverName;     // server name, used in the prefix of outgoing messages
 public:
     Server(int port, const std::string &password);  // store port and password
     ~Server();                                      // free all clients, channels and sockets

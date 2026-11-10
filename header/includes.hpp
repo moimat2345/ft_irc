@@ -6,7 +6,7 @@
 /*   By: mateon <mateon@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/11/02 21:28:38 by mateon            #+#    #+#             */
-/*   Updated: 2026/11/02 21:38:36 by mateon           ###   ########.fr       */
+/*   Updated: 2026/11/10 09:14:02 by mateon           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -35,6 +35,7 @@
 // ---------- C standard library ----------
 # include <cstdlib>      // strtol / atoi (parse the port), exit
 # include <cstring>      // memset, strerror: init structs and print system errors
+# include <cctype>      // isdigit, isalpha, etc.
 # include <cerrno>       // errno: detect EAGAIN, EADDRINUSE, EINTR...
 # include <csignal>      // signal, SIGINT: stop the server cleanly with Ctrl+C
 

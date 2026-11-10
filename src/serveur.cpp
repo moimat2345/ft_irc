@@ -73,7 +73,7 @@ void Server::removeClient(int fd) {
 // ---------------- main part ------------------------------------- //
 
 Server::Server(int port, const std::string &password)
-	: _port(port), _password(password), _listenFd(-1) {
+	: _port(port), _password(password), _listenFd(-1), _serverName("ircserv") {
 	setupSocket();
 }
 
