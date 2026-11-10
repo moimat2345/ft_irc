@@ -6,7 +6,7 @@
 /*   By: mateon <mateon@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/11/08 22:53:22 by mateon            #+#    #+#             */
-/*   Updated: 2026/11/08 23:17:16 by mateon           ###   ########.fr       */
+/*   Updated: 2026/11/10 09:14:37 by mateon           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -43,6 +43,9 @@ void Message::parse(const std::string &line) {
 	// Get the command
 	if (iss >> token) {
 		_command = token;
+		for (size_t i = 0; i < _command.size(); ++i) {
+			_command[i] = static_cast<char>(std::toupper(static_cast<unsigned char>(_command[i])));
+		}
 	}
 
 	// Get the parameters

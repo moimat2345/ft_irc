@@ -105,10 +105,12 @@ bool Client::isRegistered() const {
 	return _registered;
 }
 
-void Client::tryRegister() {
-	if (_passOk && !_nick.empty() && !_username.empty()) {
+bool Client::tryRegister() {
+	if (!_registered && _passOk && !_nick.empty() && !_username.empty()) {
 		_registered = true;
+		return true;
 	}
+	return false;
 }
 
 // Buffer management

@@ -49,7 +49,7 @@ public:
 
     bool    isPassOk() const;                       // true if PASS was correct
     bool    isRegistered() const;                   // true once PASS + NICK + USER are all done
-    void    tryRegister();                          // switch to registered if every step is complete
+    bool    tryRegister();                          // switch to registered if every step is complete; true only the first time it does
 
     void    appendToRecvBuffer(const std::string &data);    // add freshly received bytes to the buffer
     bool    extractLine(std::string &line);                 // pop one full line ("\r\n" or "\n"); false if none yet
