@@ -29,6 +29,7 @@ private:
     bool        _registered;    // fully authenticated and allowed to use commands
 
 public:
+    Client();
     Client(int fd);                                 // create a client bound to its socket fd
     Client(const Client &other);                    // copy constructor
     Client &operator=(const Client &other);         // assignment operator
@@ -41,6 +42,7 @@ public:
     const std::string   &getHostname() const;       // client's address, as stored by setHostname()
     std::string         getPrefix() const;          // builds "nick!user@host" used in outgoing messages
 
+    void    setFd(const int fd) { this->_fd = fd; };
     void    setNick(const std::string &nick);       // store the nickname (validated by the caller)
     void    setUsername(const std::string &user);   // store the username
     void    setRealname(const std::string &real);   // store the real name

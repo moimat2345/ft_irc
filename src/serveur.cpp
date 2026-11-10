@@ -40,30 +40,71 @@ void Server::setupSocket() {
 	LOG_SERVER("Server started with the password " << "<" << _password << ">");
 }
 
+void Server::acceptClient() {
+	Client client;
+	struct sockaddr_in cliaddr;
+	struct pollfd NewCliPoll;
+	socklen_t cliaddrlen = sizeof(cliaddr);
+
+	int incofd = accept(_listenFd, reinterpret_cast< struct sockaddr *>(&cliaddr), &cliaddrlen);
+	if (incofd < 0) { LOG_SERVER("accept() failed"); return; }
+	if (fcntl(incofd, F_SETFL, O_NONBLOCK) < 0) { LOG_SERVER("fcntl() failed"); return; }
+
+	NewCliPoll.fd = incofd;
+	NewCliPoll.events = POLLIN;
+	NewCliPoll.revents = 0;
+
+	client.setFd(incofd);
+	// _clients.push_back(client);
+	_clients.insert(std::make_pair(incofd, &client));
+	_pollFds.push_back(NewCliPoll);
+
+	LOG_CLIENT(incofd + " - Connected");
+}
+
+void Server::handleClientMessage(int fd) {
+
+}
+
+void Server::removeClient(int fd) {
+	
+}
+
+// ---------------- main part ------------------------------------- //
+
 Server::Server(int port, const std::string &password)
 	: _port(port), _password(password), _listenFd(-1) {
 	setupSocket();
 }
 
+/**
+ * 
+ * When the condition _pollFds[i].fd == _listenFd is satisfied, it means 
+ * that an event has occurred on the server socket _listenFd. In a server 
+ * application, this type of event usually indicates that a new client is 
+ * trying to connect to the server. The server socket _listenFd is 
+ * responsible for receiving incoming connection requests from the clients.
+ */
+
 void Server::run() {
 	LOG_SERVER("Waiting to accept a connection...");
-	// while (true) {
-	// 	if (poll(&_pollFds[0], _pollFds.size(), -1) == -1) {
-	// 		if (errno == EINTR) continue; // interrupted by signal, retry poll()
-	// 		throw(std::runtime_error("poll() faild"));
-	// 	}
+	while (true) {
+		if (poll(&_pollFds[0], _pollFds.size(), -1) < 0) {
+			if (errno == EINTR) continue; // interrupted by signal, retry poll()
+			throw(std::runtime_error("poll() faild"));
+		}
 		
-	// 	for (size_t i = 0; i < _pollFds.size(); ++i) {
-	// 		if (_pollFds[i].revents == 0) continue;
+		for (size_t i = 0; i < _pollFds.size(); ++i) {
+			if (_pollFds[i].revents == 0) continue;
 	
-	// 		if (_pollFds[i].revents & POLLIN) {
-	// 			if (_pollFds[i].fd == _listenFd)
-	// 				// setup a new client
-	// 			else
-	// 				// receive new data from a registered client(read, write)
-	// 		}
-	// 	}
-	// }
+			if (_pollFds[i].revents & POLLIN) {
+				if (_pollFds[i].fd == _listenFd)
+					acceptClient();
+				else
+					handleClientMessage(_pollFds[i].fd);
+			}
+		}
+	}
 }
 
 Server::~Server() {
