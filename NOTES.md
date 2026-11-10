@@ -76,6 +76,15 @@
 
     -: sets the socket options. 
 
+- int accept(int sockfd, struct sockaddr *_Nullable restrict addr,
+                  socklen_t *_Nullable restrict addrlen);
+
+    -: accept a connection on a socket. System call used with connection-based socket types (SOCK_STREAM). It exctracts the first connection request on the queue of pending connections for the listening socket, _listenFd, creates a new connected socket, returns a new file descriptor referring to that socket
+
+- poll(&_pollFds[0], _pollFds.size(), -1) - 
+
+    -: polls all file descriptors in _pollfds indefinitely (-1 timeout) for events.
+
 ### Connectionless Socket. VS. Connection-oriented Socket.
 These two types define how data is transmited between a client and a server and differ mainly in 
 
@@ -86,5 +95,4 @@ Blocking are sleeping while waiting for something(forget) to be ready. Will writ
 
 [Possible an IRC Client that might be used with our server ](https://www.rfc-editor.org/info/rfc2812/#section-3)
 
-![alt text](Service-Client.png)
 

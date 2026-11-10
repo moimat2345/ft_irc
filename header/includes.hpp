@@ -14,7 +14,11 @@
 # define INCLUDES_HPP
 
 # define BLUE   "\033[34m"
+# define GREEN  "\033[32m"
 # define RESET  "\033[0m"
+
+# define LOG_CLIENT(message) \
+    std::cout << GREEN "Client -> " RESET << message << std::endl
 
 # define LOG_SERVER(message) \
     std::cout << BLUE "Server -> " RESET << message << std::endl

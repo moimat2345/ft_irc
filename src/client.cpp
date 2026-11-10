@@ -12,6 +12,12 @@
 
 #include "../header/client.hpp"
 
+// default constructor
+Client::Client()
+	: _fd(-1), _passOk(false), _registered(false) {
+
+}
+
 //constructor
 Client::Client(int fd)
 	: _fd(fd), _passOk(false), _registered(false) {
