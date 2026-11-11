@@ -57,6 +57,7 @@ public:
     bool    extractLine(std::string &line);                 // pop one full line ("\r\n" or "\n"); false if none yet
     void    queueMessage(const std::string &msg);           // add a message to the send queue
     bool    hasPendingData() const;                         // true if something is waiting to be sent
+    void    trimSendBuffer(int end);                        // trim/erase from 0 to number_of_bytes sent already
     std::string &getSendBuffer();                           // access the send queue (used when writing to the socket)
 };
 

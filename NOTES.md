@@ -85,6 +85,11 @@
 
     -: polls all file descriptors in _pollfds indefinitely (-1 timeout) for events.
 
+- ssize_t send(size_t size;
+                      int sockfd, const void buf[size], size_t size, int flags);
+
+    -: send a message on a socket. 
+
 ### Connectionless Socket. VS. Connection-oriented Socket.
 These two types define how data is transmited between a client and a server and differ mainly in 
 

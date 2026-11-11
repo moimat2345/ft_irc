@@ -15,7 +15,14 @@
 
 # define BLUE   "\033[34m"
 # define GREEN  "\033[32m"
+# define RED    "\033[31m"
 # define RESET  "\033[0m"
+
+# define LOG_ERR(message) \
+    std::cout << RED message RESET << std::endl
+
+# define LOG_INFO(message) \
+    std::cout << message << std::endl
 
 # define LOG_CLIENT(message) \
     std::cout << GREEN "Client -> " RESET << message << std::endl
@@ -46,6 +53,7 @@
 # include <poll.h>       // poll, struct pollfd: watch many sockets at once
 # include <fcntl.h>      // fcntl: set sockets to non-blocking mode
 # include <unistd.h>     // close: close a socket file descriptor
+# include <iomanip>
 
 //for mac os
 # include <netdb.h>		 // getaddrinfo, freeaddrinfo, gai_strerror
