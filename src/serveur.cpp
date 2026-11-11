@@ -6,7 +6,7 @@
 /*   By: mateon <mateon@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/11/08 20:11:26 by mateon            #+#    #+#             */
-/*   Updated: 2026/11/11 14:59:52 by mateon           ###   ########.fr       */
+/*   Updated: 2026/11/11 19:21:10 by mateon           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -78,7 +78,6 @@ void Server::readFromClient(int fd) {
 	ssize_t bytes = recv(fd, buf, sizeof(buf) - 1, 0);
 	if (bytes <= 0) {
 		removeClient(fd);
-		LOG_CLIENT(fd << " - Disconnected");
 		return ;
 	}
 	std::string line;
@@ -112,7 +111,7 @@ void Server::removeClient(int fd) {
 	ClientIt = _clients.find(fd);
 	if (ClientIt == _clients.end())
 		return ;
-
+	LOG_CLIENT(fd << " - Disconnected");
 	std::map<std::string, Channel *>::iterator it = _channels.begin();
 	while (it != _channels.end()) {
 		if (it->second->isMember(ClientIt->second))
