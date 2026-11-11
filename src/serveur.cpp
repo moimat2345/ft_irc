@@ -6,7 +6,7 @@
 /*   By: mateon <mateon@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/11/08 20:11:26 by mateon            #+#    #+#             */
-/*   Updated: 2026/11/08 20:16:45 by mateon           ###   ########.fr       */
+/*   Updated: 2026/11/11 14:59:52 by mateon           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -85,7 +85,7 @@ void Server::readFromClient(int fd) {
 	Client *cli = getClient(fd);
 	if (!cli)
 		return ;
-	cli->appendToRecvBuffer(buf);
+	cli->appendToRecvBuffer(std::string(buf, bytes)); //so we don't get a probleme even if they is a null character in the buffer
 	while (cli->extractLine(line)) {
 		processLine(*cli, line);
 		if (!getClient(fd))
@@ -119,19 +119,22 @@ void Server::removeClient(int fd) {
 			it->second->removeMember(ClientIt->second);
 		
 		if (it->second->getMemberCount() == 0)
+		{
+			delete it->second;
 			_channels.erase(it++);
-		else
+		} else
 			++it;
 	}
 
 	for (size_t i = 0; i < _pollFds.size(); ++i) {
 		if (_pollFds[i].fd == fd) {
-			_pollFds.erase(_pollFds.begin() + 1);
+			_pollFds.erase(_pollFds.begin() + i);
 			break ;
 		}
 	}
 
 	close(fd);
+	delete ClientIt->second;
 	_clients.erase(ClientIt);
 }
 
@@ -151,32 +154,79 @@ Server::Server(int port, const std::string &password)
  * responsible for receiving incoming connection requests from the clients.
  */
 
+//gonna try to rebuild the run function, but i will do it in a different way, because the one i had was not working properly
+
+// void Server::run() {
+// 	LOG_SERVER("Waiting to accept a connection...");
+// 	while (true) {
+// 		if (poll(&_pollFds[0], _pollFds.size(), -1) < 0) {
+// 			if (errno == EINTR) continue; // interrupted by signal, retry poll()
+// 			throw(std::runtime_error("poll() failed"));
+// 		}
+		
+// 		for (size_t i = 0; i < _pollFds.size(); ++i) {
+// 			if (_pollFds[i].revents == 0) continue;
+	
+// 			if (_pollFds[i].revents & POLLIN) {
+// 				if (_pollFds[i].fd == _listenFd)
+// 					acceptClient();
+// 				continue ;
+// 			}
+
+// 			if (_pollFds[i].revents & (POLLHUP | POLLERR | POLLNVAL)) {
+// 				removeClient(_pollFds[i].fd);
+// 				continue ;
+// 			}
+
+// 			if (_pollFds[i].revents & POLLIN) readFromClient(_pollFds[i].fd);
+// 			if (!getClient(_pollFds[i].fd))
+// 				continue ;
+// 			if (_pollFds[i].revents & POLLOUT) flushClient(_pollFds[i].fd);
+// 		}
+// 	}
+// }
+
 void Server::run() {
 	LOG_SERVER("Waiting to accept a connection...");
 	while (true) {
+		// Poll the file descriptors for events
+		for (size_t i = 1; i < _pollFds.size(); ++i) {
+			_pollFds[i].events = POLLIN;
+			Client* cli = getClient(_pollFds[i].fd);
+			if (cli && cli->hasPendingData())
+				_pollFds[i].events |= POLLOUT;
+		}
+		// Wait for events on the file descriptors
 		if (poll(&_pollFds[0], _pollFds.size(), -1) < 0) {
-			if (errno == EINTR) continue; // interrupted by signal, retry poll()
+			if (errno == EINTR) continue;
 			throw(std::runtime_error("poll() failed"));
 		}
-		
-		for (size_t i = 0; i < _pollFds.size(); ++i) {
-			if (_pollFds[i].revents == 0) continue;
-	
-			if (_pollFds[i].revents & POLLIN) {
-				if (_pollFds[i].fd == _listenFd)
-					acceptClient();
-				continue ;
+		// Handle events for each file descriptor
+		size_t i = 0;
+		while (i < _pollFds.size()) {
+			int fd = _pollFds[i].fd;
+			short revents = _pollFds[i].revents;
+			
+			// If the event is on the listening socket, accept a new client
+			if (fd == _listenFd) {
+				if (revents & POLLIN) acceptClient();
+				++i;
+				continue;
 			}
-
-			if (_pollFds[i].revents & (POLLHUP | POLLERR | POLLNVAL)) {
-				removeClient(_pollFds[i].fd);
-				continue ;
+			// If the event is on a client socket, handle it
+			if (revents & POLLIN) {
+				readFromClient(fd);
+			} // If the client has disconnected or an error occurred, remove it
+			else if (revents & (POLLHUP | POLLERR | POLLNVAL)) {
+				removeClient(fd);
 			}
-
-			if (_pollFds[i].revents & POLLIN) readFromClient(_pollFds[i].fd);
-			if (!getClient(_pollFds[i].fd))
-				continue ;
-			if (_pollFds[i].revents & POLLOUT) flushClient(_pollFds[i].fd);
+			// If the client has data to send, flush it
+			if (getClient(fd) && (revents & POLLOUT)) {
+				flushClient(fd);
+			}
+			// Move to the next file descriptor only if the current one still exists
+			if (getClient(fd))
+				++i;
 		}
 	}
 }

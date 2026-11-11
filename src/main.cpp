@@ -6,7 +6,7 @@
 /*   By: mateon <mateon@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/11/02 21:39:18 by mateon            #+#    #+#             */
-/*   Updated: 2026/11/02 22:45:54 by mateon           ###   ########.fr       */
+/*   Updated: 2026/11/11 14:37:46 by mateon           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -47,6 +47,7 @@ int main(int argc, char **argv)
 		std::cerr << "Error: password must be non-empty and contain no spaces." << std::endl;
 		return (1);
 	}
+	signal(SIGPIPE, SIG_IGN); // ignore SIGPIPE to prevent crashes when writing to closed sockets
 	try {
 		Server server(std::atoi(argv[1]), argv[2]);
 		server.run();
