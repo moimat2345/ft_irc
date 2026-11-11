@@ -213,16 +213,13 @@ void Server::run() {
 				continue;
 			}
 			// If the event is on a client socket, handle it
-			if (revents & POLLIN) {
-				readFromClient(fd);
-			} // If the client has disconnected or an error occurred, remove it
+			if (revents & POLLIN) readFromClient(fd);
+			// If the client has disconnected or an error occurred, remove it
 			else if (revents & (POLLHUP | POLLERR | POLLNVAL)) {
 				removeClient(fd);
 			}
 			// If the client has data to send, flush it
-			if (getClient(fd) && (revents & POLLOUT)) {
-				flushClient(fd);
-			}
+			if (getClient(fd) && (revents & POLLOUT)) flushClient(fd);
 			// Move to the next file descriptor only if the current one still exists
 			if (getClient(fd))
 				++i;

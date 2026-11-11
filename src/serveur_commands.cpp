@@ -17,7 +17,7 @@
 void Server::sendReply(Client &c, int code, const std::string &text) {
 	std::string nick = c.getNick().empty() ? "*" : c.getNick();
 	std::ostringstream oss;
-	oss << ":" << _serverName << " " << code << " " << nick << " " << text << "\r\n";
+	oss << ":" << _serverName << " " << std::setw(3) << std::setfill('0') << code << " " << nick << " " << text << "\r\n";
 	c.queueMessage(oss.str());
 }
 
@@ -42,7 +42,7 @@ Channel *Server::findChannel(const std::string &name) {
 
 // sends the registration numeric(s) once, right when a client finishes PASS+NICK+USER
 void Server::sendWelcome(Client &c) {
-	sendReply(c, 1, "Welcome to the IRC network " + c.getPrefix());
+	sendReply(c, 1, ":Welcome to the IRC network " + c.getPrefix());
 }
 
 // --- processing ---
