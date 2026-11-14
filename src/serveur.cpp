@@ -138,10 +138,31 @@ void Server::removeClient(int fd) {
 }
 
 // ---------------- main part ------------------------------------- //
-
+// the whole list of commands we are handling -->
 Server::Server(int port, const std::string &password)
 	: _port(port), _password(password), _listenFd(-1), _serverName("ircserv") {
-	setupSocket();
+
+	try {
+		setupSocket();
+
+		_commands["PASS"] = &Server::cmdPass;
+		_commands["NICK"] = &Server::cmdNick;
+		_commands["USER"] = &Server::cmdUser;
+		_commands["JOIN"] = &Server::cmdJoin;
+		_commands["PART"] = &Server::cmdPart;
+		_commands["PRIVMSG"] = &Server::cmdPrivmsg;
+		_commands["QUIT"] = &Server::cmdQuit;
+		_commands["KICK"] = &Server::cmdKick;
+		_commands["INVITE"] = &Server::cmdInvite;
+		_commands["TOPIC"] = &Server::cmdTopic;
+		_commands["MODE"] = &Server::cmdMode;
+	}
+	catch (...) {
+		if (_listenFd != -1)
+			close(_listenFd);
+		throw ;
+	}
+
 }
 
 /**
@@ -152,38 +173,6 @@ Server::Server(int port, const std::string &password)
  * trying to connect to the server. The server socket _listenFd is 
  * responsible for receiving incoming connection requests from the clients.
  */
-
-//gonna try to rebuild the run function, but i will do it in a different way, because the one i had was not working properly
-
-// void Server::run() {
-// 	LOG_SERVER("Waiting to accept a connection...");
-// 	while (true) {
-// 		if (poll(&_pollFds[0], _pollFds.size(), -1) < 0) {
-// 			if (errno == EINTR) continue; // interrupted by signal, retry poll()
-// 			throw(std::runtime_error("poll() failed"));
-// 		}
-		
-// 		for (size_t i = 0; i < _pollFds.size(); ++i) {
-// 			if (_pollFds[i].revents == 0) continue;
-	
-// 			if (_pollFds[i].revents & POLLIN) {
-// 				if (_pollFds[i].fd == _listenFd)
-// 					acceptClient();
-// 				continue ;
-// 			}
-
-// 			if (_pollFds[i].revents & (POLLHUP | POLLERR | POLLNVAL)) {
-// 				removeClient(_pollFds[i].fd);
-// 				continue ;
-// 			}
-
-// 			if (_pollFds[i].revents & POLLIN) readFromClient(_pollFds[i].fd);
-// 			if (!getClient(_pollFds[i].fd))
-// 				continue ;
-// 			if (_pollFds[i].revents & POLLOUT) flushClient(_pollFds[i].fd);
-// 		}
-// 	}
-// }
 
 void Server::run() {
 	LOG_SERVER("Waiting to accept a connection...");
@@ -215,6 +204,7 @@ void Server::run() {
 			// If the event is on a client socket, handle it
 			if (revents & POLLIN) readFromClient(fd);
 			// If the client has disconnected or an error occurred, remove it
+			// else-if is safe: readFromClient removes the client when recv() <= 0
 			else if (revents & (POLLHUP | POLLERR | POLLNVAL)) {
 				removeClient(fd);
 			}

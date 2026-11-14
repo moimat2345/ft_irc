@@ -61,6 +61,7 @@ private:
     int                         _listenFd;      // listening socket
     std::vector<struct pollfd>  _pollFds;       // all fds watched by poll()
     std::map<int, Client *>     _clients;       // fd -> Client
+    std::map<std::string, void (Server::*)(Client &, const Message &) > _commands;
     std::map<std::string, Channel *> _channels; // channel name -> Channel
 	std::string                 _serverName;     // server name, used in the prefix of outgoing messages
 public:

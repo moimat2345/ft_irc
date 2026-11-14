@@ -63,31 +63,13 @@ void Server::dispatch(Client &client, const Message &msg) {
 		sendReply(client, 451, ":You have not registered");
 		return;
 	}
-	if (cmd == "PASS") {
-		cmdPass(client, msg);
-	} else if (cmd == "NICK") {
-		cmdNick(client, msg);
-	} else if (cmd == "USER") {
-		cmdUser(client, msg);
-	} else if (cmd == "JOIN") {
-		cmdJoin(client, msg);
-	} else if (cmd == "PART") {
-		cmdPart(client, msg);
-	} else if (cmd == "PRIVMSG") {
-		cmdPrivmsg(client, msg);
-	} else if (cmd == "QUIT") {
-		cmdQuit(client, msg);
-	} else if (cmd == "KICK") {
-		cmdKick(client, msg);
-	} else if (cmd == "INVITE") {
-		cmdInvite(client, msg);
-	} else if (cmd == "TOPIC") {
-		cmdTopic(client, msg);
-	} else if (cmd == "MODE") {
-		cmdMode(client, msg);
-	} else {
+
+	std::map<std::string, void (Server::*)(Client &, const Message &)>::iterator it;
+	it = _commands.find(cmd);
+	if (it != _commands.end())
+		(this->*it->second)(client, msg);
+	else
 		sendReply(client, 421, cmd + " :Unknown command");
-	}
 }
 
 // --- commands ---
